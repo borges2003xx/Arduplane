@@ -1103,7 +1103,9 @@ static void update_current_flight_mode(void)
             //control_mode = thermal(AUTO);
             new_mode = thermal(control_mode);
             if (new_mode != control_mode) {
-              set_mode(new_mode);
+              //set_mode(new_mode);  //rather than use set_mode, do operations here to allow the waypoint to be setup in thermal()
+              control_mode = new_mode;
+              crash_timer = 0;
             }
             
             break;

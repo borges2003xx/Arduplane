@@ -20,7 +20,7 @@
 
 //gcs_send_text_P(SEVERITY_LOW, PSTR("In soar code, initialising variables"));
 float x[N] = { 10, 10, 0, 0 }; //State vector
-float p[N][N] = {{2, 0, 0, 0},{0,10,0,0},{0,0,20,0},{0,0,0,20}}; //Covaraince matric
+float p[N][N] = {{2.0, 0, 0, 0},{0,10.0,0,0},{0,0,20.0,0},{0,0,0,20.0}}; //Covaraince matric
 float cov_r = pow(0.5,2); //Measurement covariance
 float r[1][1] = {{cov_r}};
 float cov_q = pow(0.1,2); //State covariance
@@ -64,20 +64,27 @@ ExtendedKalmanFilter ekf (x,p,q,r);
        
        prev_next_wp = next_WP;
        
-       next_WP = current_loc; //for now set next wp to current location - it would be better if this was a set distance ahead of a/c 
-       //as this represents the thermal location, and we know we are flying into the thermal.
+       next_WP = current_loc; // filter offsets based on ac location
+         
        prev_update_location = current_loc; // needed to see how far the move the thermal relative to the a/c
        
        calculated_control_mode =  LOITER;
        
        thermal_start_time_ms = millis();
         
-       // New state vector filter will be reset to. Thermal location is placed 10m in front of a/c 
+       // New state vector filter will be reset. Thermal location is placed 10m in front of a/c 
        //float xr[] = {10.0,10.0,0.0,0.0};
-       float xr[] = {5.0,15.0,10.0*cos(ahrs.yaw),10.0*sin(ahrs.yaw)};    
+       float xr[] = {2.0,100.0,50.0*cos(ahrs.yaw),50.0*sin(ahrs.yaw)};      
        // Also reset covariance matrix p so filter is not affected by previous data       
        ekf.reset(xr,p);
        
+       if (1) {
+         location_offset(&next_WP, ekf.X[3], ekf.X[4]); //place waypoint to reflect filter state
+       }
+       else
+       {
+         location_offset(&next_WP, 1000.0*cos(ahrs.yaw), 1000.0*sin(ahrs.yaw));
+       }
        prev_update_location = current_loc;                                // save for next time
        prev_update_time = millis();
      }
@@ -90,15 +97,15 @@ ExtendedKalmanFilter ekf (x,p,q,r);
  // Check to see if we've topped out of a thermal and 
  // Should transition to cruise (or rather the previous control mode).
  static FlightMode cruise(FlightMode current_control_mode) {
-   
-   FlightMode calculated_control_mode = current_control_mode;
+    
+   FlightMode calculated_control_mode = current_control_mode;  // default  behaviour is to keep current mode
  
    if ( g.soar_active == 1 ) {
-     if ( (read_climb_rate() < 0)  && ((millis() - thermal_start_time_ms) > MIN_THERMAL_TIME_MS) ) {
+     if ( (read_climb_rate() < 0)  && ((millis() - thermal_start_time_ms) > MIN_THERMAL_TIME_MS) ) {  
        //gcs_send_text_P(SEVERITY_LOW, PSTR("Thermal weak, reentering previous mode"));
        hal.console->printf_P(PSTR("Thermal weak, reentering previous mode\n"));
        calculated_control_mode =  previous_control_mode;
-       next_WP = prev_next_wp;
+       next_WP = prev_next_wp;    // continue to the waypoint being used before thermal mode
      }
      else {
        if (RUN_FILTER)  { // allow testing wind drift following only
@@ -106,7 +113,7 @@ ExtendedKalmanFilter ekf (x,p,q,r);
          
          // now update filter
          float dx = get_offset_north(&current_loc, &prev_update_location);  // get distances from previous update
-         float dy = get_offset_east(&current_loc, &prev_update_location);
+         float dy =  get_offset_east(&current_loc, &prev_update_location);
          
          Vector3f wind = ahrs.wind_estimate();
          // N.B. can use wind.x and wind.y to correct for thermal wind drift - need to ascertain sense.
@@ -115,15 +122,25 @@ ExtendedKalmanFilter ekf (x,p,q,r);
          //dy += wind.y * (millis()-prev_update_time)/1000.0;
          ekf.update(read_climb_rate(),dx, dy);                              // update the filter
          
-         next_WP = current_loc; // as filter estimate is based on offset from current location
-         location_offset(&next_WP, ekf.X[3], ekf.X[4]); //update the WP
+         if (1){
+           next_WP = current_loc; // as filter estimate is based on offset from current location
+           location_offset(&next_WP, ekf.X[3], ekf.X[4]); //update the WP
+         }
+         else  //test location math functions. Loiter target should not move CONFIRMED
+         {
+           dx = get_offset_north(&current_loc, &next_WP);  
+           dy =  get_offset_east(&current_loc, &next_WP);
+           next_WP = current_loc;
+           location_offset(&next_WP, dx, dy); //update the WP
+         }
          
          hal.console->printf_P(PSTR("%f %f\n"),ekf.X[3], ekf.X[4]);
+//         hal.console->printf_P(PSTR("%f"),ahrs.yaw);
          
          prev_update_location = current_loc;                                // save for next time
          prev_update_time = millis();
        }
-       else {
+       else {  // testing repositioning of loiter waypoint CONFIRMED
          Vector3f wind = ahrs.wind_estimate(); //Always gives zero in FlightGear
          wind.y = 5.0; //
          // N.B. can use wind.x and wind.y to correct for thermal wind drift - need to ascertain sense.

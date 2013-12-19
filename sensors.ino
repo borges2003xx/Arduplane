@@ -27,7 +27,9 @@ static int32_t read_barometer(void)
 // in M/S * 100
 static void read_airspeed(void)
 {
+#if HIL_MODE != HIL_MODE_ATTITUDE
     airspeed.read();
+#endif
     calc_airspeed_errors();
 }
 
@@ -89,7 +91,12 @@ static int32_t adjusted_altitude_cm(void)
   the soaring module
 */
 static float read_climb_rate() {
+  
+#if HIL_MODE != HIL_MODE_ATTITUDE
+  // in HIL, this is done when new data is received, to avoid putting too many identical baro readings into climb rate filter
   barometer.read();
   barometer.get_altitude();
+#endif
+  
   return barometer.get_climb_rate();
 }

@@ -852,11 +852,11 @@ static void medium_loop()
 
         // Read Airspeed
         // -------------
-#if HIL_MODE != HIL_MODE_ATTITUDE
+
         if (airspeed.enabled()) {
             read_airspeed();
         }
-#endif
+
 
         read_receiver_rssi();
 
@@ -1203,6 +1203,8 @@ static void update_current_flight_mode(void)
             }
             calc_throttle();
             calc_nav_pitch();
+            
+            hal.console->printf_P(PSTR("%f\n"),read_climb_rate());
             break;
 
         case STABILIZE:

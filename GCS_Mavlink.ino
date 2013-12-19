@@ -1808,7 +1808,11 @@ mission_failed:
                           packet.lat*1.0e-7, packet.lon*1.0e-7, packet.alt*1.0e-3,
                           vel*1.0e-2, cog*1.0e-2, 0, 10);
         }
-
+        
+        if (airspeed.enabled()) {
+          airspeed.set_HIL(vel/100.0);
+        }
+        
         // rad/sec
         Vector3f gyros;
         gyros.x = packet.rollspeed;
@@ -1834,6 +1838,9 @@ mission_failed:
         y *= 95446.0;
 
         barometer.setHIL(Temp, y);
+        
+        barometer.read();
+        barometer.get_altitude();
 
  #if HIL_MODE == HIL_MODE_ATTITUDE
         // set AHRS hil sensor. We don't do this in sensors mode, as

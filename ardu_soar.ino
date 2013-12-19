@@ -101,7 +101,10 @@ ExtendedKalmanFilter ekf (x,p,q,r);
    FlightMode calculated_control_mode = current_control_mode;  // default  behaviour is to keep current mode
  
    if ( g.soar_active == 1 ) {
-     if ( (read_climb_rate() < 0)  && ((millis() - thermal_start_time_ms) > MIN_THERMAL_TIME_MS) ) {  
+     
+     float climb_rate = read_climb_rate();
+     
+     if ( (climb_rate < 0)  && ((millis() - thermal_start_time_ms) > MIN_THERMAL_TIME_MS) ) {  
        //gcs_send_text_P(SEVERITY_LOW, PSTR("Thermal weak, reentering previous mode"));
        hal.console->printf_P(PSTR("Thermal weak, reentering previous mode\n"));
        calculated_control_mode =  previous_control_mode;
@@ -112,46 +115,25 @@ ExtendedKalmanFilter ekf (x,p,q,r);
          // still in thermal - need to update the wp location and update the filter according to new measurement
          
          // now update filter
-         float dx = get_offset_north(&current_loc, &prev_update_location);  // get distances from previous update
-         float dy =  get_offset_east(&current_loc, &prev_update_location);
+         float dx = get_offset_north(&prev_update_location, &current_loc);  // get distances from previous update
+         float dy =  get_offset_east(&prev_update_location, &current_loc);
          
          Vector3f wind = ahrs.wind_estimate();
          // N.B. can use wind.x and wind.y to correct for thermal wind drift - need to ascertain sense.
          // Need to reconsider this: if thermal is defined relative to a/c and a/c is also drifting with wind is it necessary?
          //dx += wind.x * (millis()-prev_update_time)/1000.0;
          //dy += wind.y * (millis()-prev_update_time)/1000.0;
-         ekf.update(read_climb_rate(),dx, dy);                              // update the filter
+         float oldX = ekf.X[2];
+         float oldY = ekf.X[3];
+         ekf.update(climb_rate,dx, dy);                              // update the filter
          
-         if (1){
-           next_WP = current_loc; // as filter estimate is based on offset from current location
-           location_offset(&next_WP, ekf.X[3], ekf.X[4]); //update the WP
+         next_WP = current_loc; // as filter estimate is based on offset from current location
+         location_offset(&next_WP, ekf.X[2], ekf.X[3]); //update the WP
+         if (1) { //((dx > 0.0001) || (dy > 0.0001)) {
+           //hal.console->printf_P(PSTR("%f %f %f %f %f %f\n"),oldX, oldY, dx, dy, ekf.X[2], ekf.X[3]);
+           hal.console->printf_P(PSTR("%f %f %f\n"),climb_rate, ekf.X[2]+dx-oldX, ekf.X[3]+dy-oldY);
          }
-         else  //test location math functions. Loiter target should not move CONFIRMED
-         {
-           dx = get_offset_north(&current_loc, &next_WP);  
-           dy =  get_offset_east(&current_loc, &next_WP);
-           next_WP = current_loc;
-           location_offset(&next_WP, dx, dy); //update the WP
-         }
-         
-         hal.console->printf_P(PSTR("%f %f\n"),ekf.X[3], ekf.X[4]);
-//         hal.console->printf_P(PSTR("%f"),ahrs.yaw);
-         
-         prev_update_location = current_loc;                                // save for next time
-         prev_update_time = millis();
-       }
-       else {  // testing repositioning of loiter waypoint CONFIRMED
-         Vector3f wind = ahrs.wind_estimate(); //Always gives zero in FlightGear
-         wind.y = 5.0; //
-         // N.B. can use wind.x and wind.y to correct for thermal wind drift - need to ascertain sense.
-         float dx = wind.x * ((float)(millis()-prev_update_time))/1000.0;
-         float dy = wind.y * ((float)(millis()-prev_update_time))/1000.0;
-         
-         int32_t prev_lng = next_WP.lng;
-         
-         location_offset(&next_WP, dx, dy); //update the WP
-         
-         hal.console->printf_P(PSTR("%f %f %ld %ld\n"),dx,dy,next_WP.lat,next_WP.lng);
+
          prev_update_location = current_loc;                                // save for next time
          prev_update_time = millis();
        }

@@ -228,6 +228,8 @@ public:
         // ArduSoar parameters
         k_param_soar_active,
         k_param_thermal_vspeed,
+        k_param_thermal_q,
+        k_param_thermal_r,
 
         // 254,255: reserved
     };
@@ -317,6 +319,8 @@ public:
     // ArduSoar parameters
     AP_Int8 soar_active;
     AP_Float thermal_vspeed;
+    AP_Float thermal_q;
+    AP_Float thermal_r;
 
     // Navigational maneuvering limits
     //

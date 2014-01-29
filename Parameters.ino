@@ -413,6 +413,22 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @Range: 0 10
     // @User: Advanced 
     GSCALAR(thermal_vspeed,  "THERMAL_VSPEED", THERMAL_VSPEED),
+    
+    // @Param: THERMAL_Q
+    // @DisplayName: Process noise
+    // @Description: Standard deviation of noise in process
+    // @Units: 
+    // @Range: 0 10
+    // @User: Advanced 
+    GSCALAR(thermal_q,  "THERMAL_Q", THERMAL_Q),
+    
+    // @Param: THERMAL_R
+    // @DisplayName: Measurement noise
+    // @Description: Standard deviation of noise in measurement
+    // @Units: 
+    // @Range: 0 10
+    // @User: Advanced 
+    GSCALAR(thermal_r,  "THERMAL_R", THERMAL_R),
   
     // @Param: LIM_ROLL_CD
     // @DisplayName: Maximum Bank Angle

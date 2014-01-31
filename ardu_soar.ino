@@ -90,7 +90,7 @@ ExtendedKalmanFilter ekf;
        // Also reset covariance matrix p so filter is not affected by previous data       
        ekf.reset(xr,p,q,r);
        
-       location_offset(&next_WP, ekf.X[3], ekf.X[4]); //place waypoint to reflect filter state
+       location_offset(&next_WP, ekf.X[2], ekf.X[3]); //place waypoint to reflect filter state
        last_alt = barometer.get_altitude();  // So that the first delta is not nonsense
        prev_update_location = current_loc;                                // save for next time
        prev_update_time = millis();

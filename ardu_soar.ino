@@ -148,7 +148,7 @@ ExtendedKalmanFilter ekf;
          //dy += wind.y * (millis()-prev_update_time)/1000.0;
        }
        
-       if (1) {
+       if (0) {
          // Print filter info for debugging
          hal.console->printf_P(PSTR("%f %f %f "),netto_rate, dx, dy);
          
@@ -160,6 +160,10 @@ ExtendedKalmanFilter ekf;
            hal.console->printf_P(PSTR("%e "),ekf.X[i]);
          }
          hal.console->printf_P(PSTR("%ld %ld %f %f %f %f\n"),current_loc.lng, current_loc.lat, airspeed.get_airspeed(), alt, ahrs.roll, climb_rate_unfilt);
+       }
+       else {
+         //Log_Write_Thermal((float*)ekf.X, current_loc.lat, current_loc.lng, climb_rate_unfilt);
+         Log_Write_Thermal(netto_rate, dx, dy, (float*)ekf.X, current_loc.lat, current_loc.lng);
        }
        
        ekf.update(netto_rate,dx, dy);                              // update the filter

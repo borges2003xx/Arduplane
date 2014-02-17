@@ -75,6 +75,7 @@ print_log_menu(void)
         PLOG(RAW);
         PLOG(CMD);
         PLOG(CUR);
+        PLOG(THERMAL);
  #undef PLOG
     }
 
@@ -191,6 +192,7 @@ select_logs(uint8_t argc, const Menu::arg *argv)
         TARG(RAW);
         TARG(CMD);
         TARG(CUR);
+        TARG(THERMAL);
  #undef TARG
     }
 
@@ -395,6 +397,42 @@ static void Log_Read_Current()
                     ((float)DataFlash.ReadInt() / 100.f),
                     (int)DataFlash.ReadInt());
 }
+
+
+static void Log_Write_Thermal(float climbrate, float dx, float dy, float* X, int32_t lat, int32_t lng)
+{
+    DataFlash.WriteByte(HEAD_BYTE1);
+    DataFlash.WriteByte(HEAD_BYTE2);
+    DataFlash.WriteByte(LOG_THERMAL_MSG);
+    DataFlash.WriteInt((int)(climbrate*100.0));
+    DataFlash.WriteInt((int)(dx*100.0));
+    DataFlash.WriteInt((int)(dy*100.0));
+    DataFlash.WriteInt((int)(X[0]*100.0));
+    DataFlash.WriteInt((int)(X[1]*10.0));
+    DataFlash.WriteInt((int)(X[2]*100.0));
+    DataFlash.WriteInt((int)(X[3]*100.0));
+    DataFlash.WriteLong(lat);
+    DataFlash.WriteLong(lng);
+
+    DataFlash.WriteByte(END_BYTE);
+}
+
+// Read a Current packet
+static void Log_Read_Thermal()
+{
+    cliSerial->printf_P(PSTR("TH: %4.4f, %4.4f, %4.4f, %4.4f, %4.4f, %4.4f, %4.4f, %4.7f, %4.7f\n"),
+                    ((float)DataFlash.ReadInt() / 100.f),
+                    ((float)DataFlash.ReadInt() / 100.f),
+                    ((float)DataFlash.ReadInt() / 100.f),
+                    ((float)DataFlash.ReadInt() / 100.f),
+                    ((float)DataFlash.ReadInt() / 10.f),
+                    ((float)DataFlash.ReadInt() / 100.f),
+                    ((float)DataFlash.ReadInt() / 100.f),
+                    DataFlash.ReadLong()/t7,
+                    DataFlash.ReadLong()/t7);
+}
+
+
 
 // Read an control tuning packet
 static void Log_Read_Control_Tuning()
@@ -623,6 +661,9 @@ static int16_t Log_Read_Process(int16_t start_page, int16_t end_page)
             }else if(data == LOG_STARTUP_MSG) {
                 Log_Read_Startup();
                 log_step++;
+            }else if(data == LOG_THERMAL_MSG) {
+                Log_Read_Thermal();
+                log_step++;
             }else {
                 if(data == LOG_GPS_MSG) {
                     Log_Read_GPS();
@@ -657,6 +698,8 @@ static void Log_Write_Startup(uint8_t type) {
 static void Log_Write_Cmd(uint8_t num, struct Location *wp) {
 }
 static void Log_Write_Current() {
+}
+static void Log_Write_Thermal(float* X, int32_t lat, int32_t lng, float climbrate) {
 }
 static void Log_Write_Nav_Tuning() {
 }

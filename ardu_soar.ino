@@ -14,8 +14,8 @@
 #include <ExtendedKalmanFilter.h>
 
 #define N 4
-#define MIN_THERMAL_TIME_MS  300000
-#define MIN_CRUISE_TIME_MS  30000
+#define MIN_THERMAL_TIME_MS  60000
+#define MIN_CRUISE_TIME_MS  120000
 #define RUN_FILTER 1
 #define THERMAL_DISTANCE_AHEAD 50.0
 #define EXPECTED_THERMALLING_SINK 0.9
@@ -57,6 +57,8 @@ ExtendedKalmanFilter ekf;
  unsigned long prev_update_time;
  //gcs_send_text_P(SEVERITY_LOW, PSTR("Soar initialisation complete"));
  
+ unsigned long loop_start_us;
+ 
  float last_alt;
  
 
@@ -67,6 +69,7 @@ ExtendedKalmanFilter ekf;
    
    if( g.soar_active == 1 ) {
      if ((read_climb_rate() > g.thermal_vspeed ) && (( millis()- cruise_start_time_ms ) > MIN_CRUISE_TIME_MS )) {  
+     //if (1) {
        hal.console->printf_P(PSTR("Thermal detected, entering loiter\n"));
        previous_control_mode = current_control_mode;
        
@@ -104,7 +107,9 @@ ExtendedKalmanFilter ekf;
  // Check to see if we've topped out of a thermal and 
  // Should transition to cruise (or rather the previous control mode).
  static FlightMode cruise(FlightMode current_control_mode) {
-
+   
+   loop_start_us = micros();
+   
    FlightMode calculated_control_mode = current_control_mode;  // default  behaviour is to keep current mode
  
    if ( g.soar_active == 1 ) {
@@ -128,9 +133,9 @@ ExtendedKalmanFilter ekf;
      // Correct for aircraft sink
      float netto_rate = read_netto_rate(climb_rate_unfilt);
      
-     if ((thermalability < 0) && ((millis()-thermal_start_time_ms) > MIN_THERMAL_TIME_MS)) {
+     if ((thermalability < McCready(alt)) && ((millis()-thermal_start_time_ms) > MIN_THERMAL_TIME_MS)) {
        // Exit as soon as thermal state estimate deteriorates
-       hal.console->printf_P(PSTR("Thermal weak, reentering previous mode: W %f R %f th %f\n"),ekf.X[0],ekf.X[1],thermalability);
+       hal.console->printf_P(PSTR("Thermal weak, reentering previous mode: W %f R %f th %f alt %f Mc %f\n"),ekf.X[0],ekf.X[1],thermalability,alt,McCready(alt));
        calculated_control_mode =  previous_control_mode;
        next_WP = prev_next_wp;    // continue to the waypoint being used before thermal mode
        cruise_start_time_ms = millis();
@@ -163,7 +168,7 @@ ExtendedKalmanFilter ekf;
        }
        else {
          //Log_Write_Thermal((float*)ekf.X, current_loc.lat, current_loc.lng, climb_rate_unfilt);
-         Log_Write_Thermal(netto_rate, dx, dy, (float*)ekf.X, current_loc.lat, current_loc.lng);
+         Log_Write_Thermal(netto_rate, dx, dy, (float*)ekf.X, current_loc.lat, current_loc.lng, alt);
        }
        
        ekf.update(netto_rate,dx, dy);                              // update the filter
@@ -176,6 +181,7 @@ ExtendedKalmanFilter ekf;
        last_alt = alt;
      }
    }
+   //hal.console->printf_P(PSTR("EKF loop time %lu us\n"),micros()-loop_start_us);
    return calculated_control_mode;
  }
  
@@ -197,5 +203,26 @@ ExtendedKalmanFilter ekf;
    cosphi = (1 - phi*phi/2); // first two terms of mclaurin series for cos(phi)
    netto_rate = climb_rate + aspd*(C1 + C2/(cosphi*cosphi));  // effect of aircraft drag removed
    return netto_rate;
+ }
+ 
+ static float McCready(float alt) {
+   float XP[] = {0, 3000};
+   float YP[] = {0, 4};
+   int n = 2;
+   // Linear interpolation (without extrap)
+   if (alt<=XP[0]) { 
+     return YP[0];
+   }
+   else if (alt>=XP[n-1]){
+     return YP[n-1];
+   }
+   else {
+     for (int i=0;i<n;i++) {
+       if (alt>=XP[i]) {
+         return (((alt-XP[i]) * (YP[i+1]-YP[i]) /(XP[i+1]-XP[i])) + YP[i]);
+       }  
+     }
+   }
+   return -1.0; // never happens   
  }
  

@@ -399,7 +399,7 @@ static void Log_Read_Current()
 }
 
 
-static void Log_Write_Thermal(float climbrate, float dx, float dy, float* X, int32_t lat, int32_t lng)
+static void Log_Write_Thermal(float climbrate, float dx, float dy, float* X, int32_t lat, int32_t lng, float alt)
 {
     DataFlash.WriteByte(HEAD_BYTE1);
     DataFlash.WriteByte(HEAD_BYTE2);
@@ -413,14 +413,14 @@ static void Log_Write_Thermal(float climbrate, float dx, float dy, float* X, int
     DataFlash.WriteInt((int)(X[3]*100.0));
     DataFlash.WriteLong(lat);
     DataFlash.WriteLong(lng);
-
+    DataFlash.WriteInt((int)(alt*10.0));
     DataFlash.WriteByte(END_BYTE);
 }
 
 // Read a Current packet
 static void Log_Read_Thermal()
 {
-    cliSerial->printf_P(PSTR("TH: %4.4f, %4.4f, %4.4f, %4.4f, %4.4f, %4.4f, %4.4f, %4.7f, %4.7f\n"),
+    cliSerial->printf_P(PSTR("TH: %4.4f, %4.4f, %4.4f, %4.4f, %4.4f, %4.4f, %4.4f, %4.7f, %4.7f, %4.4f\n"),
                     ((float)DataFlash.ReadInt() / 100.f),
                     ((float)DataFlash.ReadInt() / 100.f),
                     ((float)DataFlash.ReadInt() / 100.f),
@@ -429,7 +429,8 @@ static void Log_Read_Thermal()
                     ((float)DataFlash.ReadInt() / 100.f),
                     ((float)DataFlash.ReadInt() / 100.f),
                     DataFlash.ReadLong()/t7,
-                    DataFlash.ReadLong()/t7);
+                    DataFlash.ReadLong()/t7,
+                    DataFlash.ReadInt() / 10.f);
 }
 
 
@@ -699,7 +700,7 @@ static void Log_Write_Cmd(uint8_t num, struct Location *wp) {
 }
 static void Log_Write_Current() {
 }
-static void Log_Write_Thermal(float* X, int32_t lat, int32_t lng, float climbrate) {
+static void Log_Write_Thermal(float* X, int32_t lat, int32_t lng, float climbrate, float alt) {
 }
 static void Log_Write_Nav_Tuning() {
 }

@@ -638,6 +638,9 @@ static float load;
 
 static FlightMode new_mode;
 
+// store time cruise was entered for hysteresis
+unsigned long cruise_start_time_ms;
+
 // Camera/Antenna mount tracking and stabilisation stuff
 // --------------------------------------
 #if MOUNT == ENABLED
@@ -1117,16 +1120,14 @@ static void update_current_flight_mode(void)
         hold_course = -1;
 
         switch(control_mode) {
-        case RTL:
+
         case LOITER:
             // If we were thermaling, is it time to transition to cruise?
-            //control_mode = cruise(control_mode);
-
             new_mode = cruise(control_mode);
             if (new_mode != control_mode) {
               set_mode(new_mode);
             }
-            
+        case RTL:       
         case GUIDED:
             crash_checker();
             calc_nav_roll();

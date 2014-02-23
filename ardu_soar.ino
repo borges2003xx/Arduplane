@@ -51,7 +51,7 @@ ExtendedKalmanFilter ekf;
  unsigned long thermal_start_time_ms;
  
   // store time cruise was entered for hysteresis
- unsigned long cruise_start_time_ms;
+ //unsigned long cruise_start_time_ms;
  
  // store time of last update
  unsigned long prev_update_time;
@@ -68,7 +68,7 @@ ExtendedKalmanFilter ekf;
    FlightMode calculated_control_mode = current_control_mode;
    
    if( g.soar_active == 1 ) {
-     if ((read_climb_rate() > g.thermal_vspeed ) && (( millis()- cruise_start_time_ms ) > MIN_CRUISE_TIME_MS )) {  
+     if ((read_climb_rate() > g.thermal_vspeed ) && (( millis()- cruise_start_time_ms ) > MIN_CRUISE_TIME_MS ) && throttle_suppressed) {  
      //if (1) {
        hal.console->printf_P(PSTR("Thermal detected, entering loiter\n"));
        previous_control_mode = current_control_mode;
@@ -125,6 +125,8 @@ ExtendedKalmanFilter ekf;
      // Compute unfiltered climb rate
      float alt = barometer.get_altitude();
      
+     float rel_alt = alt - (float)home.alt/100.0;
+     
      if (alt==last_alt) {
        return calculated_control_mode;
      }
@@ -133,9 +135,9 @@ ExtendedKalmanFilter ekf;
      // Correct for aircraft sink
      float netto_rate = read_netto_rate(climb_rate_unfilt);
      
-     if ((thermalability < McCready(alt)) && ((millis()-thermal_start_time_ms) > MIN_THERMAL_TIME_MS)) {
+     if ((thermalability < McCready(rel_alt)) && ((millis()-thermal_start_time_ms) > MIN_THERMAL_TIME_MS)) {
        // Exit as soon as thermal state estimate deteriorates
-       hal.console->printf_P(PSTR("Thermal weak, reentering previous mode: W %f R %f th %f alt %f Mc %f\n"),ekf.X[0],ekf.X[1],thermalability,alt,McCready(alt));
+       hal.console->printf_P(PSTR("Thermal weak, reentering previous mode: W %f R %f th %f alt %f Mc %f\n"),ekf.X[0],ekf.X[1],thermalability,rel_alt,McCready(rel_alt));
        calculated_control_mode =  previous_control_mode;
        next_WP = prev_next_wp;    // continue to the waypoint being used before thermal mode
        cruise_start_time_ms = millis();
@@ -206,7 +208,7 @@ ExtendedKalmanFilter ekf;
  }
  
  static float McCready(float alt) {
-   float XP[] = {0, 3000};
+   float XP[] = {500, 3000};
    float YP[] = {0, 4};
    int n = 2;
    // Linear interpolation (without extrap)

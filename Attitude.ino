@@ -385,6 +385,37 @@ static void throttle_slew_limit(int16_t last_throttle)
 */
 static bool suppress_throttle(void)
 {
+    if (g.soar_active == 1 ) {
+      if (control_mode==AUTO && (current_loc.alt - home.alt)  < 50000) {
+        if (throttle_suppressed) {
+          hal.console->printf_P(PSTR("Alt<500, activating throttle\n"));
+        }
+        throttle_suppressed = false;
+        return false;
+      }
+      
+      if (control_mode==AUTO && (current_loc.alt - home.alt)  > 200000) {
+        
+        if (!throttle_suppressed) {
+         hal.console->printf_P(PSTR("Alt>2000, suppressing throttle %ld\n"),current_loc.alt - home.alt);
+         cruise_start_time_ms = millis();
+        }
+        throttle_suppressed = true;
+        return true;
+      }
+      
+      if (control_mode==AUTO && (current_loc.alt - home.alt) > 50000  && (current_loc.alt - home.alt) < 200000) {
+        //hal.console->printf_P(PSTR("Acceptable alt\n"),barometer.get_altitude());
+        return throttle_suppressed;
+      }
+      
+      if (control_mode==LOITER) {
+        throttle_suppressed = true;
+        return true;
+      }
+    }
+    
+    
     if (!throttle_suppressed) {
         // we've previously met a condition for unsupressing the throttle
         return false;
